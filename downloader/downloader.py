@@ -56,7 +56,7 @@ def metadata_formats_info(info_dict):
             formats_info[format_id] = {
                 'format_ext': format_ext,
                 'format_note':format_note,
-                # 'format_url':format_url,
+                'format_url':format_url,
                 'filesize': filesize,
                 'filesize_approx':filesize_approx,
                 'resolution': resulution
