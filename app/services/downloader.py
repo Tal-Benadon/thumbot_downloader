@@ -103,8 +103,6 @@ def choose_format(initial_link, format_info):
     
     for key, func in dispatch_table.items():
         if key in initial_link:
-            if key == 'tiktok' and 'video' not in initial_link:
-                continue
             return func(format_info)
         
     raise InitialLinkFormatError(f"Error: Unsupported link provider in URL [{initial_link}]")
@@ -114,8 +112,13 @@ def proccess_video_request(url: str, channel_id:str):
     info_dict = extract_metadata_info(url)
     formats_info = metadata_formats_info(info_dict)
     chosen_format = choose_format(url, formats_info)
-    video_size = check_video_size(chosen_format.get('format_url')) #from head request
-    file_path = download_video(url, chosen_format.get('format_id'))
+    
+    format_url = chosen_format.get('format_url')
+    format_id = chosen_format.get('format_id')
+    
+    video_size = check_video_size(format_url) #from head request
+        
+    file_path = download_video(url, format_id)
     response = upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
     
     if os.path.exists(file_path):
