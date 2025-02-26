@@ -63,7 +63,7 @@ def metadata_formats_info(info_dict):
     return formats_info
 
             
-def check_video_size(video_url: str, max_size=15_728_640)-> int:
+def check_video_size(video_url: str, max_size=8_388_608)-> int:
     
     # Head request to determine actual video size
     response = requests.head(video_url, allow_redirects=True)
