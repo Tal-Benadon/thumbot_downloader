@@ -1,13 +1,13 @@
 from typing import Dict, Any
 from collections import defaultdict
-
+from app.exceptions import InstagramError
 def choose_instagram_format(formats_info: Dict[str, Any]) -> str:
     
-    resolution_priority = ["720x1280", "1080x1920", "540x960", "576x1024", "360x640"]
+    resolution_priority = ["720x1280", "1080x1920", "540x960", "576x1024","480x854","360x640"]
     
     categorized_formats = defaultdict(list)
     audio_format = None
-    
+   
     filtered_formats = {
     f: details
     for f, details in formats_info.items()  
@@ -24,12 +24,17 @@ def choose_instagram_format(formats_info: Dict[str, Any]) -> str:
                 'format_url': details.get('format_url'),
                 'vcodec': details.get('vcodec')
             })
+    try:
+        for res in categorized_formats:
+            if categorized_formats[res]:
+                best_format = categorized_formats[res][-1]
+                format_id = best_format["format_id"]
+                format_url = best_format["format_url"]
+                final_format_id = f"{format_id}+{audio_format}" 
+                return {'format_id': final_format_id, 'format_url' : format_url}
+            else:
+                raise InstagramError("Error within instagram formatter, viable format not found")
             
-    for res in categorized_formats:
-        if categorized_formats[res]:
-            best_format = categorized_formats[res][-1]
-            format_id = best_format["format_id"]
-            format_url = best_format["format_url"]
-            final_format_id = f"{format_id}+{audio_format}" if audio_format else format_id #ternary
-
-    return {'format_id': final_format_id, 'format_url' : format_url}
+    except InstagramError as e:
+        return {"Error": {"Instagram": e}}
+        
