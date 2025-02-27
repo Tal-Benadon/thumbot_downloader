@@ -1,7 +1,7 @@
 import yt_dlp
 import requests
 import os
-from app.exceptions import  MissingContentLengthError, FileTooLargeError, InitialLinkFormatError
+from app.exceptions import  MissingContentLengthError, FileTooLargeError, InitialLinkFormatError, InstagramError
 from typing import Any, Dict
 from .providers_formats_processors.dispatch_table import dispatch_table
 from app.api.discord import upload_to_discord 
@@ -13,16 +13,21 @@ cookies_path = 'cookie.txt'
 
 def extract_metadata_info(url: str) -> Dict[str, Any]:
     yt_opt = {
-    'cookiefile': cookies_path
+    # 'cookiefile': cookies_path
     }
     try:
         with yt_dlp.YoutubeDL(yt_opt) as ydl:
             video_info_dict = ydl.extract_info(url, download=False)
-    
-            return video_info_dict
+            if video_info_dict is None and "instagram" in url:
+                raise InstagramError("Instagram didnt provide us with information (rate limit might have reached)")
+            else:
+                return video_info_dict
         
-    except Exception as e:
-        print(f"Metadata extraction error found\n\n{e}") 
+    except InstagramError as e:
+        return {"Error": {"Instagram":e}}
+    
+    except yt_dlp.utils.DownloadError as e:
+        return {"Error": {"yt_dlp":e}}
 
 
 
@@ -87,7 +92,7 @@ def download_video(url: str, format_id: str) -> str:
     ydl_opts: Dict[str, Any] = {
          'format': format_id,
         'outtmpl': video_path_template,
-        'cookiefile': cookies_path
+        # 'cookiefile': cookies_path
         }
     
     try:
@@ -111,6 +116,7 @@ def choose_format(initial_link, format_info):
 def proccess_video_request(url: str, channel_id:str):
     info_dict = extract_metadata_info(url)
     formats_info = metadata_formats_info(info_dict)
+    print(formats_info)
     chosen_format = choose_format(url, formats_info)
     
     format_url = chosen_format.get('format_url')

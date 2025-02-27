@@ -13,3 +13,6 @@ class NoSupportedFormatAvailable(Exception):
 class InitialLinkFormatError(Exception):
     """Raised when there is a problem with differentiating the link provider"""
     pass
+
+class InstagramError(Exception):
+    """Raised when there is a problem with instagram"""
