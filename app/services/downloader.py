@@ -117,19 +117,19 @@ def proccess_video_request(url: str, channel_id:str):
     info_dict = extract_metadata_info(url)
     formats_info = metadata_formats_info(info_dict)
     print(formats_info)
-    # chosen_format = choose_format(url, formats_info)
+    chosen_format = choose_format(url, formats_info)
     
-    # format_url = chosen_format.get('format_url')
-    # format_id = chosen_format.get('format_id')
+    format_url = chosen_format.get('format_url')
+    format_id = chosen_format.get('format_id')
     
-    # video_size = check_video_size(format_url) #from head request
+    video_size = check_video_size(format_url) #from head request
         
-    # file_path = download_video(url, format_id)
-    # response = upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
+    file_path = download_video(url, format_id)
+    response = upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
     
-    # if os.path.exists(file_path):
-    #     os.remove(file_path)
-    # else: 
-    #     print("File does not exist")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    else: 
+        print("File does not exist")
         
-    # print(f"{response}")
+    print(f"{response}")
