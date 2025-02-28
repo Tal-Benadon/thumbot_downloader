@@ -16,3 +16,12 @@ class InitialLinkFormatError(Exception):
 
 class InstagramError(Exception):
     """Raised when there is a problem with instagram"""
+    pass
+
+class FacebookError(Exception):
+    """Raised when there is a problem with facebook"""
+    pass
+
+class RedditError(Exception):
+    """Raised when there is a problem with reddit"""
+    pass
