@@ -12,9 +12,7 @@ cookies_path = 'cookie.txt'
 
 
 def extract_metadata_info(url: str) -> Dict[str, Any]:
-    yt_opt = {
-    # 'cookiefile': cookies_path
-    }
+    yt_opt = {}
     try:
         with yt_dlp.YoutubeDL(yt_opt) as ydl:
             video_info_dict = ydl.extract_info(url, download=False)
