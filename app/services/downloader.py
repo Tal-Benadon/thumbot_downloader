@@ -12,9 +12,7 @@ cookies_path = 'cookie.txt'
 
 
 def extract_metadata_info(url: str) -> Dict[str, Any]:
-    yt_opt = {
-    # 'cookiefile': cookies_path
-    }
+    yt_opt = {}
     try:
         with yt_dlp.YoutubeDL(yt_opt) as ydl:
             video_info_dict = ydl.extract_info(url, download=False)
@@ -33,39 +31,40 @@ def extract_metadata_info(url: str) -> Dict[str, Any]:
 
 # Checks for the different formats and sizes existing in the given metadata
 def metadata_formats_info(info_dict):
-    formats_info = {}
-    if 'formats' in info_dict:
-        for format in info_dict['formats']:
-            
-            format_id = format.get('format_id')
-            if not format_id:
-                continue
-            
-            format_ext = format.get('ext', 'Unknown extension')
-            format_note = format.get('format_note', 'Unknown note')
-            format_url = format.get('url', None)
-            vcodec = format.get('vcodec', '')
-            filesize = format.get('filesize', None)
-            filesize_approx = format.get('filesize_approx', None) 
-            resolution = format.get('resolution', '')
-            
-            
-            # size readablity
-            if filesize is not None:
-                filesize = round(int(filesize) / (1024 * 1024),2)
-            if filesize_approx is not None:
-                filesize_approx = round(int(filesize_approx) / (1024 * 1024),2)
+        formats_info = {}
+        if 'formats' in info_dict:
+            for format in info_dict['formats']:
                 
-            formats_info[format_id] = {
-                'format_ext': format_ext,
-                'format_note':format_note,
-                'format_url':format_url,
-                'vcodec': vcodec,
-                'filesize': filesize,
-                'filesize_approx':filesize_approx,
-                'resolution': resolution
-            }
-    return formats_info
+                format_id = format.get('format_id')
+                if not format_id:
+                    continue
+                
+                format_ext = format.get('ext', 'Unknown extension')
+                format_note = format.get('format_note', 'Unknown note')
+                format_url = format.get('url', None)
+                vcodec = format.get('vcodec', '')
+                filesize = format.get('filesize', None)
+                filesize_approx = format.get('filesize_approx', None) 
+                resolution = format.get('resolution', '')
+                
+                
+                # size readablity
+                if filesize is not None:
+                    filesize = round(int(filesize) / (1024 * 1024),2)
+                if filesize_approx is not None:
+                    filesize_approx = round(int(filesize_approx) / (1024 * 1024),2)
+                    
+                formats_info[format_id] = {
+                    'format_ext': format_ext,
+                    'format_note':format_note,
+                    'format_url':format_url,
+                    'vcodec': vcodec,
+                    'filesize': filesize,
+                    'filesize_approx':filesize_approx,
+                    'resolution': resolution
+                }
+        return formats_info
+   
 
             
 def check_video_size(video_url: str, max_size=8_388_608)-> int:
@@ -92,7 +91,7 @@ def download_video(url: str, format_id: str) -> str:
     ydl_opts: Dict[str, Any] = {
          'format': format_id,
         'outtmpl': video_path_template,
-        # 'cookiefile': cookies_path
+        
         }
     
     try:
@@ -104,20 +103,22 @@ def download_video(url: str, format_id: str) -> str:
         print(f"Download Error{e}")
 
 
-def choose_format(initial_link, format_info):
-    
-    for key, func in dispatch_table.items():
-        if key in initial_link:
-            return func(format_info)
+def choose_provider(initial_link, format_info):
+    try:
+        for key, func in dispatch_table.items():
+            if key in initial_link:
+                return func(format_info)
         
-    raise InitialLinkFormatError(f"Error: Unsupported link provider in URL [{initial_link}]")
+        raise InitialLinkFormatError(f"Error: Unsupported link provider in URL [{initial_link}]")
+    except InitialLinkFormatError as e:
+        return {"Error": {"providerLinkError": e}}
                 
 
 def proccess_video_request(url: str, channel_id:str):
     info_dict = extract_metadata_info(url)
     formats_info = metadata_formats_info(info_dict)
     print(formats_info)
-    chosen_format = choose_format(url, formats_info)
+    chosen_format = choose_provider(url, formats_info)
     
     format_url = chosen_format.get('format_url')
     format_id = chosen_format.get('format_id')
