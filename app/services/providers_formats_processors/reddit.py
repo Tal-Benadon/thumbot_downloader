@@ -1,4 +1,5 @@
 from typing import Dict, Any
+from app.exceptions import NoSupportedFormatAvailable
 
 def choose_reddit_format(formats_info: Dict[str, Any]) -> str:
     video_candidates = {}
@@ -36,15 +37,18 @@ def choose_reddit_format(formats_info: Dict[str, Any]) -> str:
     preffered_audio_kbps = [128, 64] # can be adjustable 
     audio_format_id = None
     sorted_kbps = sorted(audio_candidates.keys(), reverse=True) # creates a list of the keys, highest number first
-    
-    for kbps in preffered_audio_kbps: 
-        if kbps in audio_candidates:
-            audio_format_id = audio_candidates.get(kbps)
-            break
+    try:
+        for kbps in preffered_audio_kbps: 
+            if kbps in audio_candidates:
+                audio_format_id = audio_candidates.get(kbps)
+                break
+            
+        if not audio_format_id and sorted_kbps: # if there is not any of the preffered audio kbps bring the first high one
+            audio_format_id = audio_candidates[sorted_kbps[0]]
         
-    if not audio_format_id and sorted_kbps: # if there is not any of the preffered audio kbps bring the first high one
-        audio_format_id = audio_candidates[sorted_kbps[0]]
-    
-    final_format_id = f'{video_format_id + '+' + audio_format_id}'
-
+        final_format_id = f'{video_format_id + '+' + audio_format_id}'
+        if video_format_id is None or audio_format_id is None:
+            raise NoSupportedFormatAvailable("Video or audio format not found in Reddit.py")
+    except NoSupportedFormatAvailable as e:
+        return {"Error": {"RedditError": e}}
     return {'format_id': final_format_id,  'format_url': formats_info[video_format_id]['format_url']}
