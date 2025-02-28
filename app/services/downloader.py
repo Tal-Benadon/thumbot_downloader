@@ -1,7 +1,7 @@
 import yt_dlp
 import requests
 import os
-from app.exceptions import  MissingContentLengthError, FileTooLargeError, InitialLinkFormatError, InstagramError
+from app.exceptions import  MissingContentLengthError, FileTooLargeError, InitialLinkFormatError, InstagramError, FacebookError, RedditError
 from typing import Any, Dict
 from .providers_formats_processors.dispatch_table import dispatch_table
 from app.api.discord import upload_to_discord 
@@ -21,8 +21,7 @@ def extract_metadata_info(url: str) -> Dict[str, Any]:
             else:
                 return video_info_dict
         
-    except InstagramError as e:
-        return {"Error": {"Instagram":e}}
+    
     
     except yt_dlp.utils.DownloadError as e:
         return {"Error": {"yt_dlp":e}}
@@ -115,22 +114,34 @@ def choose_provider(initial_link, format_info):
                 
 
 def proccess_video_request(url: str, channel_id:str):
-    info_dict = extract_metadata_info(url)
-    formats_info = metadata_formats_info(info_dict)
-    print(formats_info)
-    chosen_format = choose_provider(url, formats_info)
-    
-    format_url = chosen_format.get('format_url')
-    format_id = chosen_format.get('format_id')
-    
-    video_size = check_video_size(format_url) #from head request
+    try:
+        info_dict = extract_metadata_info(url)
+        formats_info = metadata_formats_info(info_dict)
+        print(formats_info)
+        chosen_format = choose_provider(url, formats_info)
         
-    file_path = download_video(url, format_id)
-    response = upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
-    
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    else: 
-        print("File does not exist")
+        format_url = chosen_format.get('format_url')
+        format_id = chosen_format.get('format_id')
         
-    print(f"{response}")
+        video_size = check_video_size(format_url) #from head request
+            
+        file_path = download_video(url, format_id)
+        response = upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
+        
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        else: 
+            print("File does not exist")
+            raise FileNotFoundError("File not found or does not exist")
+        
+    except FacebookError as e:
+        return{"Error": f"Facebook Error -> {e}"}
+    
+    except InstagramError as e:
+        return{"Error": f"Instagram Error -> {e}"}
+    
+    except RedditError as e:
+        return{"Error": f"Reddit Error -> {e}"}
+    
+    except Exception as e:
+        return {"Error" : f"Unexpected error occured -> {e}"}
