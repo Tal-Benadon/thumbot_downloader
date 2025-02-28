@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from app.exceptions import NoSupportedFormatAvailable
+
 def choose_reddit_format(formats_info: Dict[str, Any]) -> str:
     video_candidates = {}
     audio_candidates = {}
