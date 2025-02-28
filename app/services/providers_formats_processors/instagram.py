@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from collections import defaultdict
-from app.exceptions import InstagramError
+from app.exceptions import NoSupportedFormatAvailable
 def choose_instagram_format(formats_info: Dict[str, Any]) -> str:
     
     resolution_priority = ["720x1280", "1080x1920", "540x960", "576x1024","480x854","360x640"]
@@ -33,8 +33,8 @@ def choose_instagram_format(formats_info: Dict[str, Any]) -> str:
                 final_format_id = f"{format_id}+{audio_format}" 
                 return {'format_id': final_format_id, 'format_url' : format_url}
             else:
-                raise InstagramError("Error within instagram formatter, viable format not found")
+                raise NoSupportedFormatAvailable("Error within instagram formatter, viable format not found")
             
-    except InstagramError as e:
-        return {"Error": {"Instagram": e}}
+    except NoSupportedFormatAvailable as e:
+        return {"Error": {"InstagramError": e}}
         
