@@ -117,7 +117,7 @@ def proccess_video_request(url: str, channel_id:str):
     try:
         info_dict = extract_metadata_info(url)
         formats_info = metadata_formats_info(info_dict)
-        print(formats_info)
+
         chosen_format = choose_provider(url, formats_info)
         
         format_url = chosen_format.get('format_url')
