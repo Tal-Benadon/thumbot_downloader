@@ -13,8 +13,8 @@ async def download(video_req: VideoRequest ):
     
   
   
-    final_response = proccess_video_request(video_req.url, video_req.channelId)
+    proccess_video_request(video_req.url, video_req.channelId)
     
-    return {"message" : f"{final_response}"}
+    return {"request processed"} # // need to decide if to return something, and if so, what?
 
   

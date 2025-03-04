@@ -126,7 +126,7 @@ def proccess_video_request(url: str, channel_id:str):
         video_size = check_video_size(format_url) #from head request
             
         file_path = download_video(url, format_id)
-        response = upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
+        upload_to_discord(channel_id, file_path) # On success, discord returns a json including destination and sender info.
         
         if os.path.exists(file_path):
             os.remove(file_path)

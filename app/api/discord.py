@@ -27,7 +27,7 @@ def upload_to_discord( channel_id: str, file_path: str):
             response = requests.post(url=uploadUrl, headers=headers, data={"payload_json":payload_json}, files=files)
             response.raise_for_status()
             file.close()
-            return response.json()
+            return
         except requests.exceptions.RequestException as e:
             print(f"Failed to upload file: {e}")
             return None # for now
