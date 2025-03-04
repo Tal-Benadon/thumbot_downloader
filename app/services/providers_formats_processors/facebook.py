@@ -37,6 +37,6 @@ def choose_facebook_format(formats_info: Dict[str, Any]) -> str: #is listed per 
     # if still None
         if not chosen_format:
             raise NoSupportedFormatAvailable("avalible format not found")
+        return chosen_format
     except NoSupportedFormatAvailable as e:
         return{"Error": {"FacebookError": e}}
-        return chosen_format
