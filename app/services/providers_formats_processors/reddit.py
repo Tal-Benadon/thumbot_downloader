@@ -46,7 +46,7 @@ def choose_reddit_format(formats_info: Dict[str, Any]) -> str:
         if not audio_format_id and sorted_kbps: # if there is not any of the preffered audio kbps bring the first high one
             audio_format_id = audio_candidates[sorted_kbps[0]]
         
-        final_format_id = f'{video_format_id + '+' + audio_format_id}'
+        final_format_id = f"{video_format_id}+{audio_format_id}"
         if video_format_id is None or audio_format_id is None:
             raise NoSupportedFormatAvailable("Video or audio format not found in Reddit.py")
     except NoSupportedFormatAvailable as e:
