@@ -25,3 +25,7 @@ class FacebookError(Exception):
 class RedditError(Exception):
     """Raised when there is a problem with reddit"""
     pass
+
+class CobaltError(Exception):
+    """Raised when there is a problem with Cobalt API"""
+    pass

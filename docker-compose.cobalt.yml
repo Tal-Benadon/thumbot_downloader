@@ -1,0 +1,64 @@
+services:
+  cobalt-api:
+    image: ghcr.io/imputnet/cobalt:10
+    restart: unless-stopped
+    container_name: cobalt-api
+    
+    # Port mapping - Cobalt API runs on port 9000 inside container
+    ports:
+      - "9000:9000"
+    
+    # Environment variables for Cobalt configuration
+    environment:
+      # Basic configuration
+      - API_PORT=9000
+      - API_URL=http://localhost:9000
+      - API_NAME=ThumbBot Cobalt Instance
+      
+      # Enable CORS for our Python client
+      - CORS_WILDCARD=1
+      
+      # Optional: Set custom user agent
+      - API_BROWSER_UA=ThumbBot-Downloader/1.0
+      
+      # Optional: Enable debug mode for development
+      - NODE_ENV=production
+      
+      # Optional: Set duration limit (in seconds) - default is 10800 (3 hours)
+      - DURATION_LIMIT=10800
+      
+      # Optional: Set file size limit (in MB) - default is 128MB
+      - FILE_SIZE_LIMIT=128
+      
+      # Optional: Rate limiting
+      - RATE_LIMIT=20
+      - RATE_LIMIT_WINDOW=60
+      
+    # Health check to ensure the service is running
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/api/serverInfo"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits (optional but recommended)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: thumbbot-network
