@@ -118,15 +118,16 @@ def download_video_from_url(video_url: str, filename: Optional[str] = None) -> s
         raise
 
 
-def process_cobalt_download(cobalt_response: Dict[str, Any]) -> str:
+def process_cobalt_download(cobalt_response: Dict[str, Any], channel_id: str = None) -> Optional[str]:
     """
     Process Cobalt API response and download the video
     
     Args:
         cobalt_response: Response from Cobalt API
+        channel_id: Discord channel ID (needed for picker ALL behavior)
     
     Returns:
-        Path to the downloaded file
+        Path to the downloaded file, or None if files were already processed and uploaded
     """
     processed = cobalt_client.process_cobalt_response(cobalt_response)
     
@@ -143,24 +144,99 @@ def process_cobalt_download(cobalt_response: Dict[str, Any]) -> str:
         if not items:
             raise CobaltError("No video files found in picker response")
         
-        logger.info(f"Found {len(items)} files, using picker behavior: {config.cobalt.picker_behavior.value}")
+        print(f"🔍 Picker: {len(items)} files found, behavior={config.cobalt.picker_behavior.value}")
         
         if config.cobalt.picker_behavior == PickerBehavior.FIRST:
             selected_item = items[0]
         elif config.cobalt.picker_behavior == PickerBehavior.LAST:
             selected_item = items[-1]
-        elif config.cobalt.picker_behavior == PickerBehavior.BEST:
-            # For now, assume first is best quality (Cobalt usually orders by quality)
-            selected_item = items[0]
+
         elif config.cobalt.picker_behavior == PickerBehavior.ALL:
-            # TODO: Implement zip functionality for multiple files
-            logger.warning("ALL picker behavior not yet implemented, using first file")
-            selected_item = items[0]
+            print(f"📥 Downloading {len(items)} files...")
+            downloaded_files = []
+            
+            for i, item in enumerate(items, 1):
+                try:
+                    # Extract original filename from URL
+                    import urllib.parse
+                    parsed_url = urllib.parse.urlparse(item["url"])
+                    path = parsed_url.path
+                    original_filename = os.path.basename(path)
+                    
+                    # Use original filename or create one with proper extension
+                    if original_filename and '.' in original_filename:
+                        filename = original_filename
+                    else:
+                        ext = os.path.splitext(path)[1] or '.bin'  # fallback to .bin if no extension
+                        filename = f"media_{i}{ext}"
+                    
+                    file_path = download_video_from_url(item["url"], filename=filename)
+                    downloaded_files.append(file_path)
+                except Exception as e:
+                    print(f"❌ Download failed for item {i}: {e}")
+                    continue
+            
+            if downloaded_files:
+                try:
+                    from app.api.discord import upload_multiple_to_discord
+                    upload_multiple_to_discord(channel_id, downloaded_files)
+                    print(f"✅ Uploaded {len(downloaded_files)}/{len(items)} files")
+                except Exception as e:
+                    print(f"❌ Upload failed: {e}")
+                
+                # Clean up files
+                if config.auto_cleanup:
+                    for file_path in downloaded_files:
+                        try:
+                            if file_path and os.path.exists(file_path):
+                                os.remove(file_path)
+                        except Exception:
+                            pass
+            
+            return None
         else:
-            selected_item = items[0]
-        
-        video_url = selected_item["url"]
-        return download_video_from_url(video_url)
+            # Fallback: treat as ALL
+            print(f"🔄 Unknown picker behavior, using ALL ({len(items)} files)")
+            downloaded_files = []
+            
+            for i, item in enumerate(items, 1):
+                try:
+                    # Extract original filename from URL
+                    import urllib.parse
+                    parsed_url = urllib.parse.urlparse(item["url"])
+                    path = parsed_url.path
+                    original_filename = os.path.basename(path)
+                    
+                    # Use original filename or create one with proper extension
+                    if original_filename and '.' in original_filename:
+                        filename = original_filename
+                    else:
+                        ext = os.path.splitext(path)[1] or '.bin'  # fallback to .bin if no extension
+                        filename = f"media_{i}{ext}"
+                    
+                    file_path = download_video_from_url(item["url"], filename=filename)
+                    downloaded_files.append(file_path)
+                except Exception as e:
+                    print(f"❌ Fallback download failed for item {i}: {e}")
+                    continue
+            
+            if downloaded_files:
+                try:
+                    from app.api.discord import upload_multiple_to_discord
+                    upload_multiple_to_discord(channel_id, downloaded_files)
+                    print(f"✅ Fallback uploaded {len(downloaded_files)}/{len(items)} files")
+                except Exception as e:
+                    print(f"❌ Fallback upload failed: {e}")
+                
+                if config.auto_cleanup:
+                    for file_path in downloaded_files:
+                        try:
+                            if file_path and os.path.exists(file_path):
+                                os.remove(file_path)
+                        except Exception:
+                            pass
+            
+            return None
     
     else:
         raise CobaltError(f"Unknown response type: {processed.get('type')}")
@@ -183,15 +259,20 @@ def proccess_video_request(url: str, channel_id: str):
         logger.info(f"Cobalt response status: {cobalt_response.get('status')}")
         
         # Download the video file
-        file_path = process_cobalt_download(cobalt_response)
-        logger.info(f"Video downloaded to: {file_path}")
+        file_path = process_cobalt_download(cobalt_response, channel_id)
         
-        # Upload to Discord (if available)
-        if DISCORD_AVAILABLE:
-            upload_result = upload_to_discord(channel_id, file_path)
-            logger.info(f"Successfully uploaded to Discord: {upload_result}")
+        if file_path is None:
+            # Files were already processed and uploaded (e.g., picker with ALL behavior)
+            logger.info("Files already processed and uploaded")
         else:
-            logger.warning("Discord functionality not available - skipping upload")
+            logger.info(f"Video downloaded to: {file_path}")
+            
+            # Upload to Discord (if available)
+            if DISCORD_AVAILABLE:
+                upload_result = upload_to_discord(channel_id, file_path)
+                logger.info(f"Successfully uploaded to Discord: {upload_result}")
+            else:
+                logger.warning("Discord functionality not available - skipping upload")
         
         return {"success": True, "message": "Video processed and uploaded successfully"}
         

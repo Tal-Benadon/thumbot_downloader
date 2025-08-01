@@ -1,272 +1,215 @@
-# ThumbBot - Downloader Service
+# 🔄 ThumbBot Downloader Service
 
-This is the video downloader component of the ThumbBot microservices architecture. ThumbBot automatically downloads and shares videos from various social media platforms when links are posted in Discord channels.
+Python FastAPI service that handles media download requests, coordinates with Cobalt for media extraction, and uploads files directly to Discord.
 
-## About This Repository
+## 🎯 Service Overview
 
-This repository contains the video downloader service written in Python/FastAPI. It's responsible for:
+- **REST API** for video/media download processing
+- **Cobalt Integration** for media extraction from platforms
+- **Discord Integration** for direct file uploads
+- **Multi-file Handling** with configurable picker behavior
+- **File Management** with automatic cleanup and size validation
 
-- Receiving video download requests from the ThumbBot Discord Bot Service
-- Downloading videos from supported platforms (Reddit, Instagram, Facebook, etc.)
-- Processing and optimizing videos for Discord upload size limits
-- Providing API endpoints for the bot service to interact with
+**Technology Stack:** FastAPI (Python 3.11+), requests, loguru, prometheus-client
 
-## Microservices Architecture
+## 📡 API Documentation
 
-ThumbBot is available in two versions:
+### Base URL
+- Local: `http://localhost:8001`
+- Docker: `http://thumbbot-downloader:8001`
 
-1. **Monolithic Version**: A single application combining bot and downloader functionality
-   - [ThumbBot Monolithic Repository](https://github.com/Tal-Benadon/Thumbot)
+### `POST /videos` - Download and Process Media
 
-2. **Microservices Version** (this repository): Two separate services that work together
-   - **Bot Service**: Written in Node.js, handles Discord interactions
-     - [ThumbBot Discord Service Repository](https://github.com/Tal-Benadon/thumbot_bot)
-   - **Downloader Service** (this repository): Written in Python, handles video downloading and processing
-
-The microservices architecture provides several advantages:
-- Independent scaling of each component
-- Ability to update components separately
-- Improved resilience and fault isolation
-
-## Project Structure
-
-- `main.py`: FastAPI application entry point
-- `app/api/`: API endpoint definitions
-  - `routes.py`: Router configuration
-  - `videos.py`: Video processing endpoints
-  - `discord.py`: Discord communication utilities
-- `app/services/`: Core service logic
-  - `downloader.py`: Video downloading and processing logic
-  - `providers_formats_processors/`: Provider-specific handling logic
-
-## Features
-
-- RESTful API for video download requests
-- Supports multiple video providers including:
-  - Reddit
-  - Instagram Reels
-  - Facebook videos and reels
-- Handles size limitations (Discord's 8MB limit) and format conversions
-- Intelligent format selection based on quality and size constraints
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8 or higher
-- Required Python packages (listed in requirements.txt)
-- FFmpeg (for video processing)
-- Discord Bot Token (required for uploading files to Discord)
-
-### Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/Tal-Benadon/thumbot_downloader.git
-   cd thumbot_downloader
-   ```
-
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Install FFmpeg (required for video processing):
-   ```
-   # Ubuntu/Debian
-   sudo apt-get update && sudo apt-get install -y ffmpeg libsm6 libxext6 libxrender-dev libglib2.0-0
-   
-   # macOS (with Homebrew)
-   brew install ffmpeg
-   
-   # Windows
-   # Download from https://ffmpeg.org/download.html and add to your PATH
-   ```
-
-4. Create a directory for temporary video storage:
-   ```
-   mkdir temp_videos
-   ```
-
-5. Create a `.env` file with your Discord bot token:
-   ```
-   DISCORD_TOKEN=your_discord_bot_token_here
-   ```
-
-### Running the Service
-
-Start the FastAPI server:
-```
-uvicorn main:app --reload
+**Request:**
+```json
+{
+  "url": "string",
+  "channelId": "string"
+}
 ```
 
-By default, the service will run on http://127.0.0.1:8000
-
-### Docker Support
-
-You can also run the service using Docker:
-
-1. Build the Docker image:
-   ```
-   docker build -t thumbot-downloader .
-   ```
-
-   Note: Make sure your Dockerfile starts with `FROM python:3.10` (not python:3.10-slim) to ensure all necessary dependencies for FFmpeg are available.
-
-2. Run the container:
-   ```
-   docker run -d --name thumbot-downloader \
-     -p 8000:8000 \
-     -e DISCORD_TOKEN=your_discord_bot_token_here \
-     thumbot-downloader
-   ```
-
-Note: The Dockerfile must use a non-slim Python base image (`python:3.10` instead of `python:3.10-slim`) and install all necessary FFmpeg dependencies to ensure proper video processing.
-
-### Alternative Token Configuration
-
-Instead of using a `.env` file, you can directly set the bot token:
-
-1. Direct environment variable (for development):
-   ```
-   export DISCORD_TOKEN=your_discord_bot_token_here
-   uvicorn main:app --reload
-   ```
-
-2. In docker-compose.yml (for production):
-   ```yaml
-   services:
-     bot:
-       build: ./thumbot_bot
-       environment:
-         - DISCORD_TOKEN=your_actual_token_here  # Directly paste your token here
-       # ...
-
-     downloader:
-       build: ./thumbot_downloader
-       environment:
-         - DISCORD_TOKEN=your_actual_token_here  # Directly paste your token here
-       # ...
-   ```
-
-3. In Docker run command:
-   ```
-   docker run -d --name thumbot-downloader \
-     -p 8000:8000 \
-     -e DISCORD_TOKEN=your_actual_token_here \
-     thumbot-downloader
-   ```
-
-Warning: Be careful with hardcoded tokens in configuration files. Never commit these files to public repositories.
-
-### API Endpoints
-
-- `GET /`: Health check endpoint
-- `POST /videos`: Submit a video download request
-  - Request body: `{ "url": "video_url", "channelId": "discord_channel_id" }`
-
-## Using with Docker Compose
-
-For running both the bot and downloader services together:
-
-1. Create a `docker-compose.yml` file in a parent directory:
-
-```yaml
-version: '3'
-
-services:
-  bot:
-    build: ./thumbot_bot
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
-    depends_on:
-      - downloader
-    restart: unless-stopped
-    networks:
-      - thumbot-network
-
-  downloader:
-    build: ./thumbot_downloader
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}  # Important: The downloader needs the Discord token for uploads
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-    volumes:
-      - video_temp:/app/temp_videos
-    networks:
-      - thumbot-network
-
-networks:
-  thumbot-network:
-    driver: bridge
-
-volumes:
-  video_temp:
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Video processed and uploaded successfully"
+}
 ```
 
-2. Run both services with:
-```
-docker-compose up -d
-```
+**Examples:**
 
-Note: Make sure the `.env` file in your project root contains your Discord bot token, which will be used by both services.
-
-Important: For Docker Compose to work properly, you need to:
-1. Clone both repositories (thumbot_bot and thumbot_downloader) into the same parent directory
-2. Place the docker-compose.yml file in that parent directory
-
-For example:
-```
-parent-directory/
-├── docker-compose.yml
-├── thumbot_bot/
-└── thumbot_downloader/
+*YouTube Video:*
+```bash
+curl -X POST http://localhost:8001/videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "channelId": "1234567890123456789"
+  }'
 ```
 
-Important: Ensure the Dockerfile in thumbot_downloader starts with `FROM python:3.10` (not python:3.10-slim) to avoid FFmpeg installation issues. If you experience video processing errors, this is the first thing to check.
+*Instagram Album (3 images):*
+```bash
+curl -X POST http://localhost:8001/videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://www.instagram.com/p/DMsrx6ysS-v/",
+    "channelId": "1234567890123456789"
+  }'
+```
 
-## Video Provider Support
+*TikTok Video:*
+```bash
+curl -X POST http://localhost:8001/videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://www.tiktok.com/@user/video/1234567890",
+    "channelId": "1234567890123456789"
+  }'
+```
 
-Currently supported video providers:
-- Reddit
-- Instagram Reels
-- Facebook videos and reels
+### `GET /health` - Health Check
+```bash
+curl http://localhost:8001/health
+# Response: {"status": "healthy"}
+```
 
-You can customize which providers are supported by editing the providers configuration.
+## ⚙️ Features & Configuration
 
-## Troubleshooting
+### Picker Behavior
+Controls multi-file content handling:
 
-- Some providers have rate limits that might affect downloading capacity
-- Maximum file size for Discord uploads is 8MB for non-boosted servers
-- For Docker setups, ensure the container has enough resources allocated for video processing
-- FFmpeg installation issues can cause video processing failures
+| Behavior | Description | Example |
+|----------|-------------|---------|
+| `all` | Download all files, upload in single message | Instagram album → All 3 images |
+| `first` | Download only the first file | Instagram album → First image only |
+| `last` | Download only the last file | Instagram album → Last image only |
 
-## Service Communication
+### File Format Support
+- **Videos:** MP4, WebM, AVI (720p/1080p quality)
+- **Images:** JPEG, PNG, WebP, GIF (original quality)
+- **Audio:** MP3, OGG, WAV, Opus
 
-The downloader and bot services communicate through a REST API:
+### Discord Integration
+- Direct Discord API uploads
+- Multi-file messages (up to 10 files)
+- 8MB file size limit (free Discord)
+- Original filename preservation
 
-1. The bot service makes HTTP requests to the downloader service endpoints.
+## 🔧 Configuration Reference
 
-2. Both services require access to the same Discord bot token:
-   - The bot service uses it to connect to Discord and monitor messages
-   - The downloader service uses it to upload processed videos directly to Discord through the `discord.py` module
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DISCORD_TOKEN` | *(required)* | Discord bot token |
+| `COBALT_API_URL` | `http://thumbbot-cobalt:9000` | Cobalt instance URL |
+| `PICKER_BEHAVIOR` | `all` | Multi-file behavior: all/first/last |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `MAX_FILE_SIZE_MB` | `8.0` | Maximum file size |
+| `VIDEO_QUALITY` | `720` | Video quality: 144/360/720/1080/max |
+| `VIDEO_CODEC` | `h264` | Video codec: h264/av1/vp9 |
+| `AUDIO_FORMAT` | `best` | Audio format: best/mp3/ogg/wav/opus |
+| `REQUEST_TIMEOUT` | `30` | HTTP request timeout (seconds) |
+| `AUTO_CLEANUP` | `true` | Enable automatic file cleanup |
 
-3. The workflow is as follows:
-   - Bot receives a message containing a video URL
-   - Bot sends the URL to the downloader service via API
-   - Downloader processes the video and uploads it directly to Discord using the bot token
-   - Bot receives notification that the process is complete
+## 🛠️ Development Setup
 
-4. If you experience issues:
-   - Check that both services have the correct DISCORD_TOKEN
-   - Verify that FFmpeg is properly installed (errors will appear in logs)
-   - Ensure volume mounts are properly configured for temporary video storage
+### Local Development
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate
 
-## License
+# Install dependencies
+pip install -r requirements.txt
 
-See the LICENSE file for details.
+# Configure environment
+cp ../env.example .env
+# Edit .env: DISCORD_TOKEN=your_token_here
 
-## Contributing
+# Start development server
+python main.py
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request. 
+### Start Cobalt (Required)
+```bash
+# Using Docker
+docker run -p 9000:9000 ghcr.io/imputnet/cobalt:10
+```
+
+### Testing
+```bash
+# Run all tests
+python -m pytest tests/ -v --cov=app
+
+# Run specific tests
+python -m pytest tests/test_api.py -v
+```
+
+## 🏗️ Code Structure
+```
+thumbot_downloader/
+├── main.py                 # FastAPI app entry
+├── app/
+│   ├── api/
+│   │   ├── routes.py       # API routes
+│   │   ├── videos.py       # Video endpoints
+│   │   └── discord.py      # Discord integration
+│   ├── services/
+│   │   ├── cobalt_client.py    # Cobalt API client
+│   │   └── downloader.py       # Download logic
+│   ├── utils/
+│   │   ├── logger.py       # Logging config
+│   │   └── metrics.py      # Prometheus metrics
+│   └── config.py           # Configuration
+├── tests/                  # Test suite
+└── requirements.txt        # Dependencies
+```
+
+## 🚨 Error Handling
+
+| Status | Error Type | Description |
+|--------|------------|-------------|
+| 200 | Success | Request processed successfully |
+| 400 | Bad Request | Invalid URL or parameters |
+| 413 | Too Large | File exceeds size limits |
+| 500 | Server Error | Unexpected error |
+| 502 | Bad Gateway | Cobalt unavailable |
+
+**Error Response:**
+```json
+{
+  "Error": "Descriptive error message",
+  "request_id": "uuid-string",
+  "timestamp": "2025-01-08T12:00:00Z"
+}
+```
+
+## 📊 Request Flow Examples
+
+### Instagram Album (3 images)
+1. **Request:** `POST /videos` with Instagram URL
+2. **Cobalt API:** Returns picker with 3 image URLs
+3. **Download:** Downloads all 3 image files 
+4. **Upload:** Uploads all files in single Discord message
+5. **Cleanup:** Removes temporary files
+6. **Response:** Success confirmation
+
+### YouTube Video
+1. **Request:** `POST /videos` with YouTube URL
+2. **Cobalt API:** Returns direct video URL
+3. **Download:** Downloads single MP4 file
+4. **Upload:** Uploads file to Discord
+5. **Cleanup:** Removes temporary file
+6. **Response:** Success confirmation
+
+## 📈 Monitoring
+
+- **Metrics:** `http://localhost:8002/metrics` (Prometheus)
+- **Health:** `http://localhost:8001/health`
+- **Logs:** Structured JSON output with emojis
+
+## 🔗 Related Documentation
+
+- **[Main System](../README.md)** - Complete system overview
+- **[Bot Service](../thumbot_bot/README.md)** - Discord bot integration
+- **[Architecture](../ARCHITECTURE.md)** - System design details

@@ -28,7 +28,7 @@ class VideoCodec(Enum):
 
 class AudioFormat(Enum):
     """Audio format options"""
-    BEST = "best"      # Best available audio
+    BEST = "best"      # Best available audio (alias for MP3)
     MP3 = "mp3"        # MP3 format
     OGG = "ogg"        # OGG format
     WAV = "wav"        # WAV format
@@ -45,7 +45,6 @@ class PickerBehavior(Enum):
     FIRST = "first"    # Download only the first file
     LAST = "last"      # Download only the last file
     ALL = "all"        # Download all files (zip them)
-    BEST = "best"      # Download the best quality file
 
 @dataclass
 class CobaltConfig:
@@ -82,7 +81,7 @@ class CobaltConfig:
     is_audio_only: bool = False
     
     # Multiple files handling
-    picker_behavior: PickerBehavior = PickerBehavior.FIRST
+    picker_behavior: PickerBehavior = PickerBehavior.ALL
     
     # File size limits (in bytes)
     max_file_size: int = 8_388_608  # 8MB (Discord's free tier limit)
@@ -114,9 +113,7 @@ class CobaltConfig:
     # Instance settings
     cobalt_instance_url: str = "http://localhost:9000"
     fallback_instances: list[str] = field(default_factory=lambda: [
-        "https://coapi.kelig.me",
-        "https://nyc1.coapi.ggtyler.dev",
-        "https://cobalt-api.ayo.tf"
+        # No fallback instances - use only our local Cobalt instance
     ])
     
     def to_cobalt_params(self) -> Dict[str, Any]:
@@ -235,10 +232,50 @@ class AppConfig:
             except ValueError:
                 pass
                 
+        # Additional Cobalt settings
+        if os.getenv("AUDIO_FORMAT"):
+            try:
+                config.cobalt.audio_format = AudioFormat(os.getenv("AUDIO_FORMAT"))
+            except ValueError:
+                pass
+        if os.getenv("FILE_FORMAT"):
+            try:
+                config.cobalt.file_format = FileFormat(os.getenv("FILE_FORMAT"))
+            except ValueError:
+                pass
+        if os.getenv("IS_AUDIO_ONLY"):
+            config.cobalt.is_audio_only = os.getenv("IS_AUDIO_ONLY").lower() == "true"
+        if os.getenv("TIKTOK_H265"):
+            config.cobalt.tiktok_h265 = os.getenv("TIKTOK_H265").lower() == "true"
+        if os.getenv("TWITTER_GIF"):
+            config.cobalt.twitter_gif = os.getenv("TWITTER_GIF").lower() == "true"
+        if os.getenv("YOUTUBE_DUB_LANG"):
+            config.cobalt.youtube_dub_lang = os.getenv("YOUTUBE_DUB_LANG")
+        if os.getenv("REQUEST_TIMEOUT"):
+            try:
+                config.cobalt.request_timeout = int(os.getenv("REQUEST_TIMEOUT"))
+            except ValueError:
+                pass
+        if os.getenv("DOWNLOAD_TIMEOUT"):
+            try:
+                config.cobalt.download_timeout = int(os.getenv("DOWNLOAD_TIMEOUT"))
+            except ValueError:
+                pass
+        if os.getenv("MAX_RETRIES"):
+            try:
+                config.cobalt.max_retries = int(os.getenv("MAX_RETRIES"))
+            except ValueError:
+                pass
+                
         # Discord settings
         if os.getenv("DISCORD_FILE_LIMIT"):
             try:
                 config.discord.current_limit = int(os.getenv("DISCORD_FILE_LIMIT"))
+            except ValueError:
+                pass
+        if os.getenv("UPLOAD_TIMEOUT"):
+            try:
+                config.discord.upload_timeout = int(os.getenv("UPLOAD_TIMEOUT"))
             except ValueError:
                 pass
                 
@@ -249,6 +286,15 @@ class AppConfig:
             config.log_level = os.getenv("LOG_LEVEL")
         if os.getenv("TEMP_DIR"):
             config.temp_dir = os.getenv("TEMP_DIR")
+        if os.getenv("DOWNLOADS_DIR"):
+            config.downloads_dir = os.getenv("DOWNLOADS_DIR")
+        if os.getenv("AUTO_CLEANUP"):
+            config.auto_cleanup = os.getenv("AUTO_CLEANUP").lower() == "true"
+        if os.getenv("CLEANUP_AGE_HOURS"):
+            try:
+                config.cleanup_age_hours = int(os.getenv("CLEANUP_AGE_HOURS"))
+            except ValueError:
+                pass
             
         return config
 
